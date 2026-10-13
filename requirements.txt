@@ -1,4 +1,4 @@
-# torch==2.1.1+cu118
+
 # torchvision==0.16.1+cu118
 # pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
 # pip install cython
@@ -6,7 +6,11 @@
 # apt-get install -y wget bzip2 ca-certificates curl git vim tmux g++ gcc build-essential cmake checkinstall gfortran libeigen3-dev libjpeg8-dev libtiff5-dev pkg-config yasm libavcodec-dev libavformat-dev libswscale-dev libdc1394-22-dev libxine2-dev libv4l-dev qt5-default libgtk2.0-dev libtbb-dev libatlas-base-dev libfaac-dev libmp3lame-dev libtheora-dev libvorbis-dev libxvidcore-dev libopencore-amrnb-dev libopencore-amrwb-dev x264 v4l-utils libprotobuf-dev protobuf-compiler libgoogle-glog-dev libgflags-dev libgphoto2-dev libhdf5-dev doxygen libflann-dev libboost-all-dev proj-data libproj-dev libyaml-cpp-dev cmake-curses-gui libzmq3-dev freeglut3-dev
 # pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu118_pyt211/download.html
 
-xformers==0.0.23
+torch==2.4.0+cu118
+torchvision==0.19.0+cu118
+torchaudio==2.4.0+cu118
+xformers==0.0.27.post2+cu118
+numpy<2
 omegaconf==2.3.0
 pytorch-lightning
 pyrender==0.1.45
@@ -41,7 +45,6 @@ absl-py
 jax
 mediapy
 wandb
-numpy
 scipy
 ffmpeg
 hydra-colorlog
@@ -70,7 +73,6 @@ Panda3D
 simplejson
 bokeh
 roma
-pin
 ninja
 h5py
 g4f

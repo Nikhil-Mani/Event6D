@@ -15,6 +15,7 @@ weights/
 save/
 outputs/
 workspace/
+*.csv
 
 # Cache directories (event voxels, etc.)
 *_cache/

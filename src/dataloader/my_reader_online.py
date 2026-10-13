@@ -254,8 +254,9 @@ class Event6DReader:
 
         # self.T_opti_to_cam = load_extrinsic_yaml('../EOT6D/calib_1014/P_feats_800.yaml')
         # self.T_opti_to_cam1 = load_extrinsic_yaml('../EOT6D/calib_1014/P1_feats_800.yaml')
-        self.T_opti_to_cam = load_extrinsic_yaml('../EOT6D/P_feats.yaml')
-        self.T_opti_to_cam1 = load_extrinsic_yaml('../EOT6D/P1_feats.yaml')
+        if load_opti_pose:
+            self.T_opti_to_cam = load_extrinsic_yaml('../EOT6D/P_feats.yaml')
+            self.T_opti_to_cam1 = load_extrinsic_yaml('../EOT6D/P1_feats.yaml')
 
         # self.T_opti_to_cam = load_extrinsic_yaml('../EOT6D/calib_1013/P_feats.yaml')
 

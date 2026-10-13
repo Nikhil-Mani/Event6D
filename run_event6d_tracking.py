@@ -36,6 +36,15 @@ from src.refiner.foundationpose.training.predict_pose_refine import PoseRefinePr
 from src.depth_extrapolation import models as evfi_models  # noqa: E402
 from src.e2vid.image_reconstructor import ImageReconstructor  # noqa: E402
 from src.e2vid.utils.loading_utils import load_model  # noqa: E402
+from extrametrics import *
+
+def render_gt_mask(renderer, ob_id, pose, K):
+    out = renderer.render_object(
+        ob_id, pose[:3, :3], pose[:3, 3].reshape(3, 1),
+        K[0, 0], K[1, 1], K[0, 2], K[1, 2],
+    )
+    return out['depth'] > 0
+
 
 class OnlineEventProcessor:
     """Wraps the depth-extrapolation network and E2VID front-end for online inference."""
@@ -148,13 +157,14 @@ def tracking(args):
     metrics_all = []
     summary_metrics_all = []
     poses_all = []
-
+    eval_logger = PoseEvalLogger()
     for obj_f in obj_folder:
         if processor is not None:
             processor.reset()
 
         video_dir = os.path.join(args.video_dirs, obj_f)
         reader = Event6DReaderScaled(video_dir, ev_width=ev_w, ev_height=ev_h)
+        eval_logger.reset_sequence()
 
         obj_name = obj_f.replace('/', '-')
         save_results_est_per_path = str(save_root / obj_name)
@@ -212,6 +222,7 @@ def tracking(args):
                     depth = reader.get_depth(i, j, frame='event' if args.e2vid else 'rgb')
 
                 mask = reader.get_mask(i).astype(np.bool_)
+                print(i, j, mask.sum())
                 if needs_resize:
                     mask = cv2.resize(mask.astype(np.uint8), (ev_w, ev_h),
                                       interpolation=cv2.INTER_NEAREST).astype(np.bool_)
@@ -220,7 +231,7 @@ def tracking(args):
                 if needs_resize:
                     K[0, :] *= scale_x
                     K[1, :] *= scale_y
-
+                gt_rendered_mask = render_gt_mask(renderer, int(ob_id), gt_pose, K)
                 if i == 0 and j == 0:
                     init_pose = gt_pose
                     if args.init_rot_noise > 0 or args.init_trans_noise > 0:
@@ -237,7 +248,7 @@ def tracking(args):
                     frame_idx=i, renderer=renderer, ob_id=int(ob_id), depth=depth,
                 )
                 metrics.append(metric)
-
+                eval_logger.update(metric=metric, obj=obj_name, frame=i, sub=j, diam=gt_diameter)
                 if j == 0 and i % args.viz_step == 0:
                     vis_img = visualize_frame_results_gt(
                         color=color, gt_mesh=gt_mesh, K=K, gt_pose=gt_pose, pred_pose=pred_pose,
@@ -275,6 +286,7 @@ def tracking(args):
         summary_metrics, _ = evaluate_pose_estimation(reader, obj_name, metrics_obj,
                                                      save_eval_path, dir=None)
         summary_metrics_all.append(summary_metrics)
+        eval_logger.save(os.path.join(save_eval_path, 'per_frame.csv'))
 
     summary_metrics, _ = evaluate_pose_estimation(reader, 'ALL', metrics_all,
                                                   save_eval_path, dir=None)
