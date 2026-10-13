@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from extrametrics import ROTATION_COLUMNS, rotation_angle_degrees
 
 
 def auc(rel, max_frac=0.1, n=1000):
@@ -15,17 +16,33 @@ def auc(rel, max_frac=0.1, n=1000):
 
 
 def add_speed(df):
-    """30 fps linear speed (m/s) per frame, from GT translations. Needs stride 1."""
-    df = df.sort_values(['obj', 'frame']).copy()
-    p = df[['tx', 'ty', 'tz']].to_numpy()
-    f = df['frame'].to_numpy()
+    """GT linear (m/s) and angular (deg/s) speeds over the same intervals.
+
+    RGB frame indices run at 30 Hz; sub=0..3 supplies the 120 Hz offsets.
+    Filter to sub=0 before calling this for a 30 fps benchmark. Sequence starts
+    and duplicate/non-increasing timestamps have no speed (NaN).
+    """
+    missing = [column for column in ROTATION_COLUMNS if column not in df]
+    if missing:
+        raise ValueError(
+            'GT rotation columns are missing; regenerate per_frame.csv with '
+            'the updated PoseEvalLogger before benchmarking angular velocity.'
+        )
+    df = df.sort_values(['obj', 'frame', 'sub'], kind='stable').copy()
+    p = df[['tx', 'ty', 'tz']].to_numpy(dtype=float)
+    rotations = df[ROTATION_COLUMNS].to_numpy(dtype=float).reshape(-1, 3, 3)
+    t = df['frame'].to_numpy(dtype=float) / 30.0 + df['sub'].to_numpy(dtype=float) / 120.0
     o = df['obj'].to_numpy()
-    speed = np.full(len(df), np.nan)
-    same = (o[1:] == o[:-1]) & (f[1:] - f[:-1] > 0)
-    dt = (f[1:] - f[:-1]) / 30.0
-    d = np.linalg.norm(p[1:] - p[:-1], axis=1)
-    speed[1:][same] = d[same] / dt[same]
-    df['lin_speed'] = speed
+    dt = np.diff(t)
+    same = (o[1:] == o[:-1]) & (dt > 0)
+    linear = np.full(len(df), np.nan)
+    angular = np.full(len(df), np.nan)
+    distance = np.linalg.norm(np.diff(p, axis=0), axis=1)
+    angle = rotation_angle_degrees(rotations[:-1], rotations[1:])
+    linear[1:][same] = distance[same] / dt[same]
+    angular[1:][same] = angle[same] / dt[same]
+    df['lin_speed'] = linear
+    df['ang_speed'] = angular
     return df
 
 
@@ -48,16 +65,21 @@ def binned_auc(df, xkey, ykey, n_bins=5, min_n=100):
 
 def main(csv, fps=30, n_bins=5, out='auc_binned.png'):
     df = pd.read_csv(csv)
-    df = add_speed(df)
+    if fps not in (30, 120):
+        raise ValueError('fps must be 30 or 120')
     if fps == 30:
         df = df[df['sub'] == 0]
-    df = df.rename(columns={'tz': 'depth'})
+    df = add_speed(df)
+    diameter = df['diam'].where(np.isfinite(df['diam']) & (df['diam'] > 0))
+    df['depth'] = df['tz'] / diameter
 
     # sanity check: should match the ALL row in 0_mean_all.xlsx
     for ykey, lab in [('adds', 'ADD-S'), ('add', 'ADD')]:
         print(f'pooled {lab} AUC: {auc(df[ykey] / df["diam"]):.2f}')
 
-    xs = [('lin_speed', 'GT linear speed (m/s)'), ('depth', 'GT depth (m)')]
+    xs = [('lin_speed', 'GT linear speed (m/s)'),
+          ('ang_speed', 'GT angular speed (deg/s)'),
+          ('depth', 'GT depth / object diameter (dimensionless)')]
     objs = sorted(df['obj'].unique())
 
     fig, axes = plt.subplots(2, len(xs), figsize=(5.5 * len(xs), 7), squeeze=False)

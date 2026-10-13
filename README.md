@@ -107,6 +107,15 @@ CUDA_VISIBLE_DEVICES=0 python3 run_event6d_tracking.py \
     --depth_extrapolation_ckpt ./weights/depth_extrapolation.pth
 ```
 
+## Motion Benchmarking
+Evaluates performance vs linear/angular speed and depth:
+```bash
+python analyze.py outputs/event6d_eval_120fps/0_eval_metric/per_frame.csv 120
+# For RGB-rate benchmarks, use 30 instead of 120.
+```
+
+The plots bin ADD/ADD-S AUC by GT linear speed (m/s), GT angular speed (deg/s),
+and GT depth divided by object diameter (dimensionless).
 ### EventHO3D (HO3D-v2 + simulated events)
 
 ```bash

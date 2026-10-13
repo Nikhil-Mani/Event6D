@@ -27,3 +27,5 @@ workspace/
 .vscode/
 .idea/
 wandb/
+
+tests/
